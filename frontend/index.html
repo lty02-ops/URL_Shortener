@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL Shortener</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>URL Shortener</h1>
+      <p>긴 URL을 짧고 관리하기 쉬운 링크로 바꿔보세요.</p>
+    </header>
+
+    <main class="main">
+      <div class="form-section">
+        <form id="shortenForm" class="form">
+          <div class="input-group">
+            <input
+              type="url"
+              id="urlInput"
+              placeholder="https://example.com/very/long/url"
+              required
+            >
+            <button type="button" id="randomButton" class="btn btn-primary" onclick="shortenUrl('random')">랜덤 생성</button>
+          </div>
+
+          <div class="custom-code-group">
+            <input
+              type="text"
+              id="customCodeInput"
+              class="custom-code-input"
+              placeholder="직접 만들 코드: my-link"
+              minlength="3"
+              maxlength="20"
+              pattern="[A-Za-z0-9_-]{3,20}"
+              title="3-20 characters: letters, numbers, _ or -"
+            >
+            <button type="button" id="customButton" class="btn btn-secondary" onclick="shortenUrl('custom')">직접 생성</button>
+          </div>
+
+          <div id="error" class="error"></div>
+        </form>
+      </div>
+
+      <div id="resultSection" class="result-section hidden">
+        <div class="result-card">
+          <div class="result-item">
+            <label>원본 URL:</label>
+            <div id="originalUrl" class="result-text"></div>
+          </div>
+          <div class="result-item">
+            <label>단축 URL:</label>
+            <div class="result-url">
+              <span id="shortUrl" class="result-text"></span>
+              <button onclick="copyToClipboard()" class="btn btn-small">복사</button>
+            </div>
+          </div>
+          <div class="result-item">
+            <label>단축 코드:</label>
+            <div id="shortCode" class="result-text"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="list-section">
+        <h2>단축된 URL 목록</h2>
+        <div id="urlList" class="url-list">
+          <p class="loading">URL 목록을 불러오는 중...</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="script.js?v=2"></script>
+</body>
+</html>
