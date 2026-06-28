@@ -7,3 +7,9 @@ node_modules/
 dist/
 build/
 target/
+*.tfvars
+*.tfvars.json
+.terraform/
+*.tfstate
+*.tfstate.*
+*.deb

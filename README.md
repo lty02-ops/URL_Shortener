@@ -1,161 +1,146 @@
-# URL 단축기 (URL Shortener)
+# URL Shortener
 
-긴 URL을 짧고 관리하기 쉬운 링크로 변환하는 웹 애플리케이션입니다.
+URL을 짧게 만들어주는 간단한 웹 애플리케이션으로, Spring Boot와 MySQL로 개발함
+로컬 실행은 Docker Compose로, AWS 배포 구조는 Terraform으로 구성해보는 데 중점을 둠
 
-## 기능 (Features)
+## Architecture
 
-- ✅ URL 단축하기
-- ✅ 단축된 URL로 원본 URL로 리다이렉트
-- ✅ URL 목록 조회
-- ✅ 클릭 통계 추적
-- ✅ URL 삭제
-- ✅ 반응형 디자인
+<img src="./image/Architecture.png">
 
-## 프로젝트 구조 (Project Structure)
+3-tier 구조를 기준으로 구성함
 
+```text
+CloudFront + S3        -> frontend 정적 파일
+ALB + Private EC2      -> Spring Boot backend
+Private RDS MySQL      -> database
 ```
+
+## AWS 구성 흐름
+
+- User는 CloudFront를 통해 S3에 저장된 frontend 정적 파일을 받음
+- Frontend에서 발생한 API 요청은 ALB로 전달
+- ALB는 요청을 private subnet의 EC2로 전달
+- EC2에서는 Spring Boot backend가 `5000` 포트로 실행
+- Backend는 private DB subnet의 RDS MySQL과 통신
+- RDS는 EC2 security group에서 오는 `3306` 요청만 허용
+- EC2 접속은 public SSH 대신 SSM을 사용
+- CloudWatch alarm으로 EC2, RDS, ALB 상태를 기본 모니터링
+
+## Tech Stack
+
+| 구분 | 사용 기술 |
+|------|-----------|
+| Frontend | HTML, CSS, JavaScript, Nginx |
+| Backend | Java, Spring Boot |
+| Database | MySQL |
+| Local | Docker Compose |
+| Infra | Terraform |
+| AWS | VPC, S3, CloudFront, ALB, EC2, RDS, SSM, CloudWatch |
+
+## 주요 기능
+
+- 긴 URL 단축 (랜덤 or 직접 설정)
+- 단축 URL로 원본 URL 리다이렉트
+- 저장된 URL 목록 조회
+- 클릭 수 확인
+- URL 삭제
+
+## API
+
+| Method | Endpoint | 설명 |
+|--------|----------|------|
+| POST | `/api/shorten` | URL 단축 |
+| GET | `/s/{shortCode}` | 원본 URL로 리다이렉트 |
+| GET | `/api/urls` | URL 목록 조회 |
+| GET | `/api/stats/{shortCode}` | URL 통계 조회 |
+| DELETE | `/api/urls/{id}` | URL 삭제 |
+
+## Local 실행
+
+```powershell
+docker compose -f infra/docker-compose.yml up -d --build
+```
+
+접속 주소
+
+```text
+Frontend: http://localhost:3000
+Backend:  http://localhost:5000
+MySQL:    localhost:3306
+```
+
+중지
+
+```powershell
+docker compose -f infra/docker-compose.yml down
+```
+
+## Terraform 실행
+
+Terraform 실행
+
+```powershell
+cd infra/Terraform
+terraform init
+terraform plan
+terraform apply
+```
+
+리소스 삭제
+
+```powershell
+terraform destroy
+```
+
+## 프로젝트 구조
+
+```text
 URL_Shortener/
-├── backend/
-│   ├── server.js           # Express 서버
-│   ├── package.json        # 의존성
-│   ├── .env.example        # 환경 변수 샘플
-│   └── .env               # 환경 변수 (실제)
-├── frontend/
-│   ├── index.html         # HTML
-│   ├── style.css          # 스타일시트
-│   └── script.js          # 자바스크립트
-├── QUICK_START.md         # 빠른 시작 가이드
-├── MYSQL_SETUP.md         # MySQL 설정 가이드
-└── README.md             # 이 파일
+  backend/
+    Dockerfile
+    pom.xml
+    src/
+  frontend/
+    Dockerfile
+    index.html
+    nginx.conf
+    script.js
+    style.css
+  infra/
+    docker-compose.yml
+    Terraform/
+      providers.tf
+      variables.tf
+      main.tf
+      vpc.tf
+      security_groups.tf
+      load_balancer.tf
+      compute.tf
+      iam_role.tf
+      vpc_endpoint.tf
+      database.tf
+      frontend.tf
+      monitoring.tf
+      outputs.tf
+  image/
+    Architecture.png
 ```
 
-## 설치 및 실행 (Installation & Running)
+## Terraform (.tf) 파일
 
-### 0. MySQL 설정
+| 파일 | 내용 |
+|------|------|
+| `providers.tf` | AWS provider 설정 |
+| `variables.tf` | 입력 변수 |
+| `main.tf` | 공통 locals, tags |
+| `vpc.tf` | VPC, subnet, routing |
+| `security_groups.tf` | 보안 그룹 |
+| `load_balancer.tf` | ALB, target group, listener |
+| `compute.tf` | EC2 backend server |
+| `iam_role.tf` | EC2 SSM 접근용 IAM role |
+| `vpc_endpoint.tf` | SSM VPC endpoint |
+| `database.tf` | RDS MySQL |
+| `frontend.tf` | S3, CloudFront |
+| `monitoring.tf` | CloudWatch alarm |
+| `outputs.tf` | 배포 후 출력값 |
 
-[MYSQL_SETUP.md](MYSQL_SETUP.md) 참고하여 MySQL 설정 완료
-
-### 1. 백엔드 설정
-
-```bash
-cd backend
-npm install
-npm start
-```
-
-서버는 `http://localhost:5000`에서 실행됩니다.
-
-### 2. 프론트엔드 실행
-
-프론트엔드는 정적 파일이므로, 간단한 HTTP 서버로 실행할 수 있습니다:
-
-```bash
-cd frontend
-
-# Windows/Mac에서
-python -m http.server 8000
-
-# Linux/WSL에서
-python3 -m http.server 8000
-
-# 또는 Node.js http-server (모든 OS)
-npx http-server -p 8000
-```
-
-프론트엔드는 `http://localhost:8000`에서 열 수 있습니다.
-
-## API 엔드포인트 (API Endpoints)
-
-### 1. URL 단축 (POST)
-```
-POST /api/shorten
-Body: { "url": "https://example.com/very/long/url" }
-Response: {
-  "id": "uuid",
-  "original_url": "https://example.com/very/long/url",
-  "short_code": "abc123",
-  "short_url": "http://localhost:5000/s/abc123"
-}
-```
-
-### 2. URL 리다이렉트 (GET)
-```
-GET /s/:shortCode
-→ 원본 URL로 리다이렉트 (클릭 수 증가)
-```
-
-### 3. 모든 URL 조회 (GET)
-```
-GET /api/urls
-Response: [
-  {
-    "id": "uuid",
-    "original_url": "...",
-    "short_code": "abc123",
-    "short_url": "http://localhost:5000/s/abc123",
-    "created_at": "2024-01-01 12:00:00",
-    "clicks": 5
-  }
-]
-```
-
-### 4. URL 삭제 (DELETE)
-```
-DELETE /api/urls/:id
-Response: { "message": "URL deleted successfully" }
-```
-
-### 5. 통계 조회 (GET)
-```
-GET /api/stats/:shortCode
-Response: {
-  "original_url": "...",
-  "short_code": "abc123",
-  "created_at": "2024-01-01 12:00:00",
-  "clicks": 5
-}
-```
-
-## 기술 스택 (Tech Stack)
-
-### 백엔드
-- **Node.js** - JavaScript 런타임
-- **Express.js** - 웹 프레임워크
-- **MySQL** - 관계형 데이터베이스
-- **CORS** - 크로스-오리진 요청 처리
-- **UUID** - 고유 ID 생성
-
-### 프론트엔드
-- **HTML5** - 마크업
-- **CSS3** - 스타일링
-- **Vanilla JavaScript** - 동작 구현
-- **Fetch API** - API 통신
-
-## 사용 예시 (Usage Example)
-
-1. 프론트엔드에서 긴 URL 입력
-2. "단축하기" 버튼 클릭
-3. 단축된 URL 생성 및 표시
-4. "복사" 버튼으로 클립보드에 복사
-5. 단축된 URL 공유
-6. 클릭 시 자동으로 원본 URL로 리다이렉트
-
-## 개선 사항 (Future Improvements)
-
-- [ ] 사용자 인증 기능
-- [ ] QR 코드 생성
-- [ ] URL 만료 설정
-- [ ] 커스텀 단축 코드
-- [ ] 상세 분석 페이지
-- [ ] 데이터베이스를 PostgreSQL로 변경
-- [ ] 캐싱 (Redis)
-- [ ] 로그인/로그아웃
-
-## 라이선스
-
-MIT License
-
----
-
-**작성일**: 2024년
-**버전**: 1.0.0

@@ -3,14 +3,14 @@ services:
     image: mysql:8.0
     container_name: url-shortener-mysql
     environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: url_shortener
       MYSQL_USER: urlshortener
-      MYSQL_PASSWORD: Url1357!
-      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     ports:
       - "3306:3306"
     volumes:
-      - mysql-data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -21,17 +21,17 @@ services:
     build:
       context: ../backend
     container_name: url-shortener-backend
-    environment:
+    environment:  
       DB_HOST: mysql
       DB_NAME: url_shortener
       DB_USER: urlshortener
-      DB_PASSWORD: Url1357!
-    ports:
+      DB_PASSWORD: ${DB_PASSWORD}
+    ports:  
       - "5000:5000"
     depends_on:
       mysql:
         condition: service_healthy
-
+    
   frontend:
     build:
       context: ../frontend
@@ -40,6 +40,5 @@ services:
       - "3000:80"
     depends_on:
       - backend
-
 volumes:
-  mysql-data:
+  mysql_data:
