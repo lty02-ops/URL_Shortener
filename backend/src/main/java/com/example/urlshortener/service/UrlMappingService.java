@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 @Service
 public class UrlMappingService {
 
-    private static final String BASE_URL = "http://localhost:5000";
+    private static final String BASE_URL = "https://dfjs5abcggo4f.cloudfront.net";
     private final UrlMappingRepository repository;
 
     public UrlMappingService(UrlMappingRepository repository) {
