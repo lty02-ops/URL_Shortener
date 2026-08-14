@@ -17,7 +17,7 @@ public class UrlMapping {
     @Column(name = "original_url", columnDefinition = "LONGTEXT", nullable = false)
     private String originalUrl;
 
-    @Column(name = "short_code", unique = true, nullable = false, length = 10)
+    @Column(name = "short_code", unique = true, nullable = false, length = 20)
     private String shortCode;
 
     @Column(name = "created_at", nullable = false)

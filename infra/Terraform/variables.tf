@@ -4,8 +4,19 @@ variable "region" {
   default     = "ap-northeast-2"
 }
 
-variable "db_password" {
-  description = "The password for the RDS database"
+variable "alarm_email" {
+  description = "CloudWatch alarm notification email"
   type        = string
-  sensitive   = true
+}
+
+variable "github_repository" {
+  description = "GitHub repository allowed to deploy the backend"
+  type        = string
+  default     = "lty02-ops/URL_Shortener"
+}
+
+variable "github_branch" {
+  description = "GitHub branch allowed to deploy the backend"
+  type        = string
+  default     = "main"
 }

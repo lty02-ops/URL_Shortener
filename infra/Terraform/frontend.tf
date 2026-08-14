@@ -7,6 +7,11 @@ resource "aws_s3_bucket" "url_shortener_bucket" {
 }
 
 resource "aws_cloudfront_distribution" "url_shortener_distribution" {
+
+  aliases = [
+    "www.url-shortener.p-e.kr"
+  ]
+
   origin {
     domain_name = aws_s3_bucket.url_shortener_bucket.bucket_regional_domain_name
     origin_id   = "S3-url-shortener-bucket"
@@ -102,8 +107,11 @@ resource "aws_cloudfront_distribution" "url_shortener_distribution" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    acm_certificate_arn      = aws_acm_certificate.cloudfront.arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
   }
+
 
   tags = {
     Name = "URL Shortener CloudFront Distribution"

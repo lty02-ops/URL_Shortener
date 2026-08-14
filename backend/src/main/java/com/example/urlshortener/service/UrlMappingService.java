@@ -7,9 +7,10 @@ import com.example.urlshortener.model.UrlMapping;
 import com.example.urlshortener.repository.UrlMappingRepository;
 
 import org.springframework.lang.NonNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.net.URL;
+import java.net.URI;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -19,11 +20,14 @@ import java.util.stream.Collectors;
 @Service
 public class UrlMappingService {
 
-    private static final String BASE_URL = "https://dfjs5abcggo4f.cloudfront.net";
     private final UrlMappingRepository repository;
+    private final String baseUrl;
 
-    public UrlMappingService(UrlMappingRepository repository) {
+    public UrlMappingService(
+            UrlMappingRepository repository,
+            @Value("${app.base-url:http://localhost:3000}") String baseUrl) {
         this.repository = repository;
+        this.baseUrl = baseUrl.replaceAll("/+$", "");
     }
 
     public ShortenResponse shorten(ShortenRequest request) {
@@ -32,7 +36,11 @@ public class UrlMappingService {
         }
 
         try {
-            new URL(request.getUrl());
+            URI uri = new URI(request.getUrl());
+            if (uri.getHost() == null || !("http".equalsIgnoreCase(uri.getScheme())
+                    || "https".equalsIgnoreCase(uri.getScheme()))) {
+                throw new IllegalArgumentException("Invalid URL format");
+            }
         } catch (Exception ex) {
             throw new IllegalArgumentException("Invalid URL format");
         }
@@ -44,7 +52,7 @@ public class UrlMappingService {
         urlMapping.setCreatedAt(OffsetDateTime.now());
         repository.save(urlMapping);
 
-        return new ShortenResponse(id, request.getUrl(), shortCode, BASE_URL + "/s/" + shortCode);
+        return new ShortenResponse(id, request.getUrl(), shortCode, baseUrl + "/s/" + shortCode);
     }
 
     public Optional<String> getRedirectLocation(String shortCode) {
@@ -105,7 +113,7 @@ public class UrlMappingService {
                 mapping.getShortCode(),
                 mapping.getCreatedAt().toString(),
                 mapping.getClicks(),
-                BASE_URL + "/s/" + mapping.getShortCode()
+                baseUrl + "/s/" + mapping.getShortCode()
         );
     }
 

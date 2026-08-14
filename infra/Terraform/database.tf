@@ -1,15 +1,16 @@
 resource "aws_db_instance" "url_shortener_db" {
-  allocated_storage      = 20
-  engine                 = "mysql"
-  engine_version         = "8.0"
-  instance_class         = "db.t3.micro"
-  db_name                = "urlshortenerdb"
-  username               = "URLShortener"
-  password               = var.db_password
-  parameter_group_name   = "default.mysql8.0"
-  vpc_security_group_ids = [aws_security_group.rds_sg.id]
-  db_subnet_group_name   = aws_db_subnet_group.url_shortener_db_subnet_group.name
-  skip_final_snapshot    = true
+  allocated_storage           = 20
+  engine                      = "mysql"
+  engine_version              = "8.0"
+  instance_class              = "db.t3.micro"
+  db_name                     = "urlshortenerdb"
+  username                    = "URLShortener"
+  manage_master_user_password = true
+  parameter_group_name        = "default.mysql8.0"
+  vpc_security_group_ids      = [aws_security_group.rds_sg.id]
+  db_subnet_group_name        = aws_db_subnet_group.url_shortener_db_subnet_group.name
+  skip_final_snapshot         = true
+  backup_retention_period     = 1
 
   tags = {
     Name = "URL Shortener Database"

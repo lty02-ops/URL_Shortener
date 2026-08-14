@@ -14,14 +14,54 @@ data "aws_ami" "ubuntu" {
 
 }
 
-resource "aws_instance" "url_shortener_instance" {
-  ami                    = data.aws_ami.ubuntu.id
-  instance_type          = "t3.micro"
-  subnet_id              = aws_subnet.public_1.id
-  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
-  iam_instance_profile   = aws_iam_instance_profile.ec2_ssm_instance_profile.name
+locals {
+  ecr_registry = split("/", aws_ecr_repository.backend.repository_url)[0]
+}
 
-  tags = {
-    Name = "URL Shortener Instance"
+resource "aws_launch_template" "backend" {
+  name_prefix   = "url-shortener-backend-"
+  image_id      = data.aws_ami.ubuntu.id
+  instance_type = "t3.micro"
+
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ec2_ssm_instance_profile.name
+  }
+
+  vpc_security_group_ids = [
+    aws_security_group.ec2_sg.id
+  ]
+
+  user_data = base64encode(templatefile(
+    "${path.module}/user_data.sh.tftpl",
+    {
+      aws_region         = var.region
+      ecr_registry       = local.ecr_registry
+      ecr_repository_url = aws_ecr_repository.backend.repository_url
+      db_host            = aws_db_instance.url_shortener_db.address
+      db_name            = aws_db_instance.url_shortener_db.db_name
+      db_instance_id     = aws_db_instance.url_shortener_db.identifier
+      base_url           = "https://www.url-shortener.p-e.kr"
+    }
+  ))
+
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
+
+  monitoring {
+    enabled = true
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+
+    tags = {
+      Name = "URL Shortener Backend"
+    }
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }

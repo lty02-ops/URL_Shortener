@@ -1,0 +1,106 @@
+name: Build and deploy backend
+
+concurrency:
+  group: backend-production-deploy
+  cancel-in-progress: false
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-deploy.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: url-shortener-backend
+  ASG_NAME: url-shortener-backend-asg
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Test backend
+        run: mvn --batch-mode --file backend/pom.xml test
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: true
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+            -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" \
+            ./backend
+
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+
+      - name: Refresh Auto Scaling instances
+        id: refresh
+        run: |
+          refresh_id=$(aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name "$ASG_NAME" \
+            --preferences '{"MinHealthyPercentage":50,"InstanceWarmup":300}' \
+            --query InstanceRefreshId \
+            --output text)
+
+          echo "refresh_id=$refresh_id" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for instance refresh
+        env:
+          REFRESH_ID: ${{ steps.refresh.outputs.refresh_id }}
+        run: |
+          for attempt in $(seq 1 60); do
+            status=$(aws autoscaling describe-instance-refreshes \
+              --auto-scaling-group-name "$ASG_NAME" \
+              --instance-refresh-ids "$REFRESH_ID" \
+              --query 'InstanceRefreshes[0].Status' \
+              --output text)
+
+            echo "Instance refresh status: $status"
+
+            case "$status" in
+              Successful)
+                exit 0
+                ;;
+              Failed|Cancelled|RollbackFailed|RollbackSuccessful)
+                exit 1
+                ;;
+            esac
+
+            sleep 30
+          done
+
+          echo "Instance refresh timed out"
+          exit 1

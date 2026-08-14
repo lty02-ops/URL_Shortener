@@ -1,26 +1,11 @@
-output "instance_id" {
-  value       = aws_instance.url_shortener_instance.id
-  description = "The ID of the EC2 instance"
+output "autoscaling_group_name" {
+  value       = aws_autoscaling_group.backend.name
+  description = "Backend Auto Scaling Group name"
 }
 
-output "public_ip" {
-  value       = aws_instance.url_shortener_instance.public_ip
-  description = "The public IP address of the EC2 instance"
-}
-
-output "public_dns" {
-  value       = aws_instance.url_shortener_instance.public_dns
-  description = "The public DNS name of the EC2 instance"
-}
-
-output "availability_zone" {
-  value       = aws_instance.url_shortener_instance.availability_zone
-  description = "The availability zone of the EC2 instance"
-}
-
-output "subnet_id" {
-  value       = aws_instance.url_shortener_instance.subnet_id
-  description = "The subnet ID of the EC2 instance"
+output "launch_template_id" {
+  value       = aws_launch_template.backend.id
+  description = "Backend EC2 Launch Template ID"
 }
 
 output "db_endpoint" {
@@ -34,4 +19,32 @@ output "alb_dns_name" {
 
 output "cloudfront_domain_name" {
   value = aws_cloudfront_distribution.url_shortener_distribution.domain_name
+}
+
+output "ecr_repository_url" {
+  value       = aws_ecr_repository.backend.repository_url
+  description = "Backend ECR repository URL"
+}
+
+output "github_actions_role_arn" {
+  value       = aws_iam_role.github_actions.arn
+  description = "IAM role ARN to save as the AWS_GITHUB_ACTIONS_ROLE_ARN GitHub Actions secret"
+}
+
+output "certificate_validation_records" {
+  description = "DNS records required to validate the ACM certificate"
+
+  value = {
+    for option in aws_acm_certificate.cloudfront.domain_validation_options :
+    option.domain_name => {
+      name  = option.resource_record_name
+      type  = option.resource_record_type
+      value = option.resource_record_value
+    }
+  }
+}
+
+output "cloudfront_certificate_arn" {
+  value       = aws_acm_certificate.cloudfront.arn
+  description = "CloudFront ACM certificate ARN"
 }

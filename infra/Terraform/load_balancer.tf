@@ -16,23 +16,18 @@ resource "aws_lb_target_group" "url_shortener_tg" {
   vpc_id   = aws_vpc.url_shortener_vpc.id
 
   health_check {
-    path                = "/"
+    path                = "/health"
+    port                = "traffic-port"
+    protocol            = "HTTP"
     interval            = 30
     timeout             = 5
     healthy_threshold   = 2
     unhealthy_threshold = 2
-    matcher             = "200-299"
+    matcher             = "200"
   }
-
   tags = {
     Name = "URL Shortener Target Group"
   }
-}
-
-resource "aws_lb_target_group_attachment" "url_shortener_tg_attachment" {
-  target_group_arn = aws_lb_target_group.url_shortener_tg.arn
-  target_id        = aws_instance.url_shortener_instance.id
-  port             = 5000
 }
 
 resource "aws_lb_listener" "url_shortener_listener" {

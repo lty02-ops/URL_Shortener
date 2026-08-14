@@ -74,6 +74,11 @@ public class UrlMappingController {
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
 
+    @GetMapping(path = "/health", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<GenericResponse> health() {
+        return ResponseEntity.ok(new GenericResponse("UP"));
+    }
+
     public static class ShortenRequest {
         private String url;
         private String custom_code;
@@ -145,7 +150,8 @@ public class UrlMappingController {
         private int clicks;
         private String short_url;
 
-        public UrlSummary(String id, String original_url, String short_code, String created_at, int clicks, String short_url) {
+        public UrlSummary(String id, String original_url, String short_code, String created_at, int clicks,
+                String short_url) {
             this.id = id;
             this.original_url = original_url;
             this.short_code = short_code;

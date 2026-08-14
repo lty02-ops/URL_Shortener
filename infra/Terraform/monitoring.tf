@@ -1,3 +1,17 @@
+resource "aws_sns_topic" "cloudwatch_alerts" {
+  name = "url-shortener-cloudwatch-alerts"
+
+  tags = {
+    Name = "URL Shortener CloudWatch Alerts"
+  }
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  topic_arn = aws_sns_topic.cloudwatch_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alarm_email
+}
+
 resource "aws_cloudwatch_metric_alarm" "high_cpu_alarm" {
   alarm_name          = "HighCPUUtilization"
   comparison_operator = "GreaterThanThreshold"
@@ -9,10 +23,19 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu_alarm" {
   threshold           = 80
 
   dimensions = {
-    InstanceId = aws_instance.url_shortener_instance.id
+    AutoScalingGroupName = aws_autoscaling_group.backend.name
   }
 
   alarm_description = "This metric monitors EC2 instance CPU utilization"
+
+  alarm_actions = [
+    aws_sns_topic.cloudwatch_alerts.arn
+  ]
+
+  ok_actions = [
+    aws_sns_topic.cloudwatch_alerts.arn
+  ]
+  treat_missing_data = "notBreaching"
 }
 
 resource "aws_cloudwatch_metric_alarm" "high_rds_cpu_alarm" {
@@ -30,6 +53,15 @@ resource "aws_cloudwatch_metric_alarm" "high_rds_cpu_alarm" {
   }
 
   alarm_description = "This metric monitors RDS instance CPU utilization"
+
+  alarm_actions = [
+    aws_sns_topic.cloudwatch_alerts.arn
+  ]
+
+  ok_actions = [
+    aws_sns_topic.cloudwatch_alerts.arn
+  ]
+  treat_missing_data = "notBreaching"
 }
 
 
@@ -47,4 +79,13 @@ resource "aws_cloudwatch_metric_alarm" "alb_target_5xx" {
   dimensions = {
     LoadBalancer = aws_lb.url_shortener_lb.arn_suffix
   }
+
+  alarm_actions = [
+    aws_sns_topic.cloudwatch_alerts.arn
+  ]
+
+  ok_actions = [
+    aws_sns_topic.cloudwatch_alerts.arn
+  ]
+  treat_missing_data = "notBreaching"
 }
