@@ -20,7 +20,7 @@ Spring Boot와 MySQL로 URL 매핑 및 클릭 통계를 관리하며, 로컬 환
 
 ### 전체 구성
 
-![URL Shortener AWS 아키텍처](./image/architecture-aws-style-v4.png)
+![URL Shortener AWS 아키텍처](./image/architecture-aws.png)
 
 사용자가 `www.url-shortener.p-e.kr`로 접속하면 CloudFront가 요청을 받습니다. 정적 파일은 S3에서 제공하고, `/api/*`와 `/s/*` 요청은 ALB를 거쳐 EC2의 Spring Boot 애플리케이션으로 전달합니다. URL과 클릭 데이터는 RDS MySQL에 저장합니다.
 
@@ -36,7 +36,7 @@ CloudFront는 정적 파일 요청을 S3로 보내고, `/api/*`와 `/s/*` 요청
 
 ### 네트워크 구성
 
-![URL Shortener 네트워크 구성](./image/architecture-network-v3.png)
+![URL Shortener 네트워크 구성](./image/architecture-network.png)
 
 VPC는 `ap-northeast-2a`와 `ap-northeast-2c` 두 가용 영역에 걸쳐 구성했습니다. 각 가용 영역에는 Public Subnet, Private App Subnet, Private DB Subnet이 하나씩 있습니다.
 
