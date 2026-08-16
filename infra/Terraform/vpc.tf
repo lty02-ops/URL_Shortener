@@ -5,17 +5,15 @@ resource "aws_vpc" "url_shortener_vpc" {
 }
 
 resource "aws_subnet" "public_1" {
-  vpc_id                  = aws_vpc.url_shortener_vpc.id
-  cidr_block              = "10.0.3.0/24"
-  availability_zone       = "ap-northeast-2a"
-  map_public_ip_on_launch = true
+  vpc_id            = aws_vpc.url_shortener_vpc.id
+  cidr_block        = "10.0.3.0/24"
+  availability_zone = "ap-northeast-2a"
 }
 
 resource "aws_subnet" "public_2" {
-  vpc_id                  = aws_vpc.url_shortener_vpc.id
-  cidr_block              = "10.0.4.0/24"
-  availability_zone       = "ap-northeast-2c"
-  map_public_ip_on_launch = true
+  vpc_id            = aws_vpc.url_shortener_vpc.id
+  cidr_block        = "10.0.4.0/24"
+  availability_zone = "ap-northeast-2c"
 }
 
 resource "aws_subnet" "private_app_1" {

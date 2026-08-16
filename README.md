@@ -50,7 +50,7 @@ VPC에는 Internet Gateway를 연결하고, Public Subnet의 기본 경로(`0.0.
 
 백엔드는 EC2의 Docker 컨테이너에서 실행합니다. Launch Template은 Ubuntu 24.04와 `t3.micro`를 사용하며, 인스턴스가 시작되면 User Data를 통해 Docker와 AWS CLI를 설치합니다. 이후 ECR에서 `latest` 태그가 붙은 백엔드 이미지를 내려받아 Spring Boot 컨테이너를 실행합니다.
 
-Auto Scaling Group은 EC2를 두 가용 영역에 나눠 배치하며, 기본적으로 2대를 유지합니다. 평균 CPU 사용률 `60%`를 기준으로 인스턴스를 최소 2대에서 4개까지 인스턴스를 자동으로 늘리거나 줄입니다. 새 버전을 배포할 때는 Instance Refresh로 기존 인스턴스를 새 이미지가 적용된 인스턴스로 차례대로 교체합니다.
+Auto Scaling Group은 EC2를 두 가용 영역에 나눠 배치하며, 기본적으로 2대를 유지합니다. 평균 CPU 사용률 `60%`를 기준으로 인스턴스를 최소 2대에서 최대 4개까지 인스턴스를 자동으로 늘리거나 줄입니다. 새 버전을 배포할 때는 Instance Refresh로 기존 인스턴스를 새 이미지가 적용된 인스턴스로 차례대로 교체합니다.
 
 ### 데이터베이스와 자격 증명
 
@@ -178,11 +178,12 @@ MySQL 데이터 볼륨까지 삭제하려면 `down -v`를 사용합니다.
 
 - AWS CLI 인증
 - Terraform
+- Docker
 - 대상 AWS 계정에서 리소스를 생성할 권한
 
-Terraform 디렉터리로 이동합니다.
+아래 명령은 WSL Bash를 기준으로 작성했습니다. Terraform 디렉터리로 이동합니다.
 
-```powershell
+```bash
 cd infra/Terraform
 ```
 
@@ -197,9 +198,79 @@ github_branch     = "main"
 
 RDS 마스터 비밀번호는 AWS가 관리하며 Secrets Manager에 저장됩니다. `terraform.tfvars`에는 배포 환경 정보가 포함될 수 있으므로 Git에 커밋하지 않습니다.
 
-인프라를 검증하고 배포합니다.
+### 최초 배포
 
-```powershell
+처음 배포할 때는 CloudFront에서 사용할 ACM 인증서를 검증하고, EC2가 실행할 첫 Docker 이미지를 ECR에 올려야 합니다.
+
+먼저 Terraform을 초기화하고 구성을 검증합니다.
+
+```bash
+terraform init
+terraform fmt -check
+terraform validate
+```
+
+DNS 검증에 사용할 ACM 인증서와 Docker 이미지를 저장할 ECR Repository를 먼저 생성합니다.
+
+```bash
+terraform apply \
+  -target=aws_acm_certificate.cloudfront \
+  -target=aws_ecr_repository.backend
+```
+
+`-target`은 최초 배포 준비 단계에서만 사용합니다. 출력된 CNAME 레코드를 외부 DNS 관리 페이지에 등록해 ACM 인증서를 검증합니다.
+
+```bash
+terraform output certificate_validation_records
+```
+
+인증서 상태를 확인합니다.
+
+```bash
+certificate_arn=$(terraform output -raw cloudfront_certificate_arn)
+
+aws acm describe-certificate \
+  --certificate-arn "$certificate_arn" \
+  --region us-east-1 \
+  --query 'Certificate.Status' \
+  --output text
+```
+
+결과가 `ISSUED`가 되면 최초 백엔드 이미지를 ECR에 업로드합니다.
+
+```bash
+ecr_repo_uri=$(terraform output -raw ecr_repository_url)
+ecr_registry=${ecr_repo_uri%%/*}
+
+aws ecr get-login-password --region ap-northeast-2 \
+  | docker login --username AWS --password-stdin "$ecr_registry"
+
+docker build \
+  --platform linux/amd64 \
+  -t "$ecr_repo_uri:latest" \
+  ../../backend
+
+docker push "$ecr_repo_uri:latest"
+```
+
+이미지 업로드가 끝나면 전체 인프라를 배포합니다.
+
+```bash
+terraform plan
+terraform apply
+```
+
+배포 후 `cloudfront_domain_name`을 확인하고, 외부 DNS에 `www` CNAME 레코드로 등록합니다. SNS에서 보낸 구독 확인 이메일도 승인해야 CloudWatch 알림을 받을 수 있습니다.
+
+```bash
+terraform output -raw cloudfront_domain_name
+```
+
+### 이후 전체 인프라 배포
+
+ACM 인증서 검증과 최초 이미지 업로드가 끝난 이후에는 일반적인 Terraform 절차로 변경 사항을 적용합니다.
+
+```bash
 terraform init
 terraform fmt -check
 terraform validate
@@ -249,19 +320,11 @@ AWS_GITHUB_ACTIONS_ROLE_ARN=<github_actions_role_arn 출력값>
 
 EC2 인스턴스는 Launch Template의 User Data를 통해 시작 시 ECR의 `latest` 이미지를 내려받습니다. RDS 접속 정보와 관리형 마스터 비밀번호는 RDS 및 Secrets Manager에서 조회한 후 컨테이너 환경 변수로 전달합니다. 따라서 EC2에 직접 접속해 백엔드를 설치할 필요가 없습니다.
 
-리소스 삭제:
+리소스 삭제
 
 ```powershell
 terraform destroy
 ```
-
-## 현재 제약 사항
-
-- 비용을 고려해 RDS를 Single-AZ로 구성했습니다. 데이터베이스가 위치한 가용 영역에 장애가 발생하면 다른 가용 영역으로 자동 전환되지 않습니다.
-- 사용 중인 AWS 계정의 Free Tier 제한으로 RDS 자동 백업 보관 기간을 1일로 설정했습니다.
-- 외부 DNS 서비스를 사용하므로 ACM 인증서 검증 레코드와 CloudFront CNAME 레코드를 직접 등록해야 합니다.
-- 로그인과 URL 소유권 구분이 없어 모든 사용자가 같은 URL 목록을 조회하거나 삭제할 수 있습니다.
-- 프론트엔드는 Terraform으로 S3 객체를 관리하고 있어 백엔드처럼 GitHub Actions를 통한 자동 배포는 지원하지 않습니다.
 
 ## Troubleshooting
 
@@ -276,6 +339,14 @@ RDS의 자동 백업 보관 기간을 Free Tier에서 허용하는 범위보다 
 ### 배포 중 ALB Target 상태 확인
 
 Instance Refresh 중 새 EC2가 상태 검사를 통과하지 못하면 기존 인스턴스 교체가 지연될 수 있었습니다. 애플리케이션의 `/health` 경로를 Target Group 상태 검사에 사용하고, ALB Target 상태와 Instance Refresh 진행 상태를 함께 확인하도록 했습니다.
+
+## 현재 제약 사항
+
+- 비용을 고려해 RDS를 Single-AZ로 구성했습니다. 데이터베이스가 위치한 가용 영역에 장애가 발생하면 다른 가용 영역으로 자동 전환되지 않습니다.
+- 사용 중인 AWS 계정의 Free Tier 제한으로 RDS 자동 백업 보관 기간을 1일로 설정했습니다.
+- 외부 DNS 서비스를 사용하므로 ACM 인증서 검증 레코드와 CloudFront CNAME 레코드를 직접 등록해야 합니다.
+- 로그인과 URL 소유권 구분이 없어 모든 사용자가 같은 URL 목록을 조회하거나 삭제할 수 있습니다.
+- 프론트엔드는 Terraform으로 S3 객체를 관리하고 있어 백엔드처럼 GitHub Actions를 통한 자동 배포는 지원하지 않습니다.
 
 ## 개발자
 
