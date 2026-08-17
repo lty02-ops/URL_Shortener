@@ -13,6 +13,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.ArgumentCaptor;
 
 class UrlMappingServiceTest {
 
@@ -34,11 +35,13 @@ class UrlMappingServiceTest {
         request.setUrl("https://example.com/a/long/path");
         request.setCustom_code("custom-code-12345678");
 
-        ShortenResponse response = service.shorten(request);
+        ShortenResponse response = service.shorten("user-1", request);
 
         assertEquals("custom-code-12345678", response.getShort_code());
         assertEquals("https://short.example.com/s/custom-code-12345678", response.getShort_url());
-        verify(repository).save(any(UrlMapping.class));
+        ArgumentCaptor<UrlMapping> mappingCaptor = ArgumentCaptor.forClass(UrlMapping.class);
+        verify(repository).save(mappingCaptor.capture());
+        assertEquals("user-1", mappingCaptor.getValue().getOwnerId());
     }
 
     @Test
@@ -48,7 +51,7 @@ class UrlMappingServiceTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> service.shorten(request));
+                () -> service.shorten("user-1", request));
 
         assertEquals("Invalid URL format", exception.getMessage());
     }
@@ -59,6 +62,6 @@ class UrlMappingServiceTest {
         request.setUrl("https://example.com");
         request.setCustom_code("123456789012345678901");
 
-        assertThrows(IllegalArgumentException.class, () -> service.shorten(request));
+        assertThrows(IllegalArgumentException.class, () -> service.shorten("user-1", request));
     }
 }

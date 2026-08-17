@@ -10,6 +10,11 @@
   <div class="container">
     <header class="header">
       <h1>URL Shortener</h1>
+      <div class="auth-actions">
+        <span id="authStatus">로그인이 필요합니다.</span>
+        <button type="button" id="loginButton" class="btn btn-primary" onclick="login()">로그인 / 회원가입</button>
+        <button type="button" id="logoutButton" class="btn btn-secondary hidden" onclick="logout()">로그아웃</button>
+      </div>
       <p>긴 URL을 짧고 관리하기 쉬운 링크로 바꿔보세요.</p>
     </header>
 
@@ -73,6 +78,7 @@
     </main>
   </div>
 
-  <script src="script.js?v=2"></script>
+  <script src="config.js"></script>
+  <script src="script.js?v=3"></script>
 </body>
 </html>

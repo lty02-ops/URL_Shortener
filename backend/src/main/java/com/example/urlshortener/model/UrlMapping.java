@@ -26,13 +26,17 @@ public class UrlMapping {
     @Column(nullable = false)
     private int clicks = 0;
 
+    @Column(name = "owner_id", length = 64)
+    private String ownerId;
+
     public UrlMapping() {
     }
 
-    public UrlMapping(String id, String originalUrl, String shortCode) {
+    public UrlMapping(String id, String originalUrl, String shortCode, String ownerId) {
         this.id = id;
         this.originalUrl = originalUrl;
         this.shortCode = shortCode;
+        this.ownerId = ownerId;
     }
 
     @PrePersist
@@ -80,5 +84,13 @@ public class UrlMapping {
 
     public void setClicks(int clicks) {
         this.clicks = clicks;
+    }
+
+    public String getOwnerId() {
+        return ownerId;
+    }
+
+    public void setOwnerId(String ownerId) {
+        this.ownerId = ownerId;
     }
 }

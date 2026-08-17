@@ -21,6 +21,11 @@ output "cloudfront_domain_name" {
   value = aws_cloudfront_distribution.url_shortener_distribution.domain_name
 }
 
+output "cloudfront_distribution_id" {
+  value       = aws_cloudfront_distribution.url_shortener_distribution.id
+  description = "CloudFront distribution ID"
+}
+
 output "ecr_repository_url" {
   value       = aws_ecr_repository.backend.repository_url
   description = "Backend ECR repository URL"
@@ -47,4 +52,19 @@ output "certificate_validation_records" {
 output "cloudfront_certificate_arn" {
   value       = aws_acm_certificate.cloudfront.arn
   description = "CloudFront ACM certificate ARN"
+}
+
+output "cognito_user_pool_id" {
+  value       = aws_cognito_user_pool.users.id
+  description = "Cognito User Pool ID"
+}
+
+output "cognito_client_id" {
+  value       = aws_cognito_user_pool_client.web.id
+  description = "Cognito web app client ID"
+}
+
+output "cognito_login_url" {
+  value       = local.cognito_domain
+  description = "Cognito managed login domain"
 }

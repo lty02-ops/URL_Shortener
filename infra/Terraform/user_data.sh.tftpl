@@ -56,4 +56,5 @@ docker run -d \
   -e DB_USER="$DB_USER" \
   -e DB_PASSWORD="$DB_PASSWORD" \
   -e BASE_URL="${base_url}" \
+  -e COGNITO_ISSUER_URI="${cognito_issuer_uri}" \
   "${ecr_repository_url}:latest"

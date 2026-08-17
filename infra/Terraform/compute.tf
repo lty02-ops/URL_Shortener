@@ -41,6 +41,7 @@ resource "aws_launch_template" "backend" {
       db_name            = aws_db_instance.url_shortener_db.db_name
       db_instance_id     = aws_db_instance.url_shortener_db.identifier
       base_url           = "https://www.url-shortener.p-e.kr"
+      cognito_issuer_uri = local.cognito_issuer_uri
     }
   ))
 

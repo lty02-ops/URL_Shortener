@@ -6,6 +6,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,9 +34,11 @@ public class UrlMappingController {
     }
 
     @PostMapping(path = "/api/shorten", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ShortenResponse> shorten(@RequestBody ShortenRequest request) {
+    public ResponseEntity<ShortenResponse> shorten(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestBody ShortenRequest request) {
         try {
-            return ResponseEntity.ok(service.shorten(request));
+            return ResponseEntity.ok(service.shorten(jwt.getSubject(), request));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(new ShortenResponse(ex.getMessage()));
         }
@@ -57,19 +61,25 @@ public class UrlMappingController {
     }
 
     @GetMapping(path = "/api/urls", produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<UrlSummary> listUrls() {
-        return service.listUrls();
+    public List<UrlSummary> listUrls(@AuthenticationPrincipal Jwt jwt) {
+        return service.listUrls(jwt.getSubject());
     }
 
     @DeleteMapping("/api/urls/{id}")
-    public ResponseEntity<GenericResponse> deleteUrl(@NonNull @PathVariable("id") String id) {
-        service.deleteUrl(id);
+    public ResponseEntity<GenericResponse> deleteUrl(
+            @AuthenticationPrincipal Jwt jwt,
+            @NonNull @PathVariable("id") String id) {
+        if (!service.deleteUrl(jwt.getSubject(), id)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
         return ResponseEntity.ok(new GenericResponse("URL deleted successfully"));
     }
 
     @GetMapping(path = "/api/stats/{shortCode}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<UrlStats> getStats(@PathVariable("shortCode") String shortCode) {
-        return service.getStats(shortCode)
+    public ResponseEntity<UrlStats> getStats(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable("shortCode") String shortCode) {
+        return service.getStats(jwt.getSubject(), shortCode)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }

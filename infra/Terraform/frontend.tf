@@ -144,6 +144,7 @@ resource "aws_s3_object" "index_html" {
   bucket       = aws_s3_bucket.url_shortener_bucket.id
   key          = "index.html"
   source       = "${path.module}/../../frontend/index.html"
+  source_hash  = filemd5("${path.module}/../../frontend/index.html")
   content_type = "text/html"
 }
 
@@ -151,6 +152,7 @@ resource "aws_s3_object" "style" {
   bucket       = aws_s3_bucket.url_shortener_bucket.id
   key          = "style.css"
   source       = "${path.module}/../../frontend/style.css"
+  source_hash  = filemd5("${path.module}/../../frontend/style.css")
   content_type = "text/css"
 }
 
@@ -158,5 +160,18 @@ resource "aws_s3_object" "script" {
   bucket       = aws_s3_bucket.url_shortener_bucket.id
   key          = "script.js"
   source       = "${path.module}/../../frontend/script.js"
+  source_hash  = filemd5("${path.module}/../../frontend/script.js")
   content_type = "application/javascript"
+}
+
+resource "aws_s3_object" "config" {
+  bucket       = aws_s3_bucket.url_shortener_bucket.id
+  key          = "config.js"
+  content_type = "application/javascript"
+  content = "window.AUTH_CONFIG = ${jsonencode({
+    domain      = local.cognito_domain
+    clientId    = aws_cognito_user_pool_client.web.id
+    redirectUri = "https://www.url-shortener.p-e.kr/"
+    logoutUri   = "https://www.url-shortener.p-e.kr/"
+  })};"
 }

@@ -30,7 +30,7 @@ public class UrlMappingService {
         this.baseUrl = baseUrl.replaceAll("/+$", "");
     }
 
-    public ShortenResponse shorten(ShortenRequest request) {
+    public ShortenResponse shorten(String ownerId, ShortenRequest request) {
         if (request == null || request.getUrl() == null || request.getUrl().isBlank()) {
             throw new IllegalArgumentException("URL is required");
         }
@@ -48,7 +48,7 @@ public class UrlMappingService {
         String id = UUID.randomUUID().toString();
         String shortCode = createShortCode(request.getCustom_code());
 
-        UrlMapping urlMapping = new UrlMapping(id, request.getUrl(), shortCode);
+        UrlMapping urlMapping = new UrlMapping(id, request.getUrl(), shortCode, ownerId);
         urlMapping.setCreatedAt(OffsetDateTime.now());
         repository.save(urlMapping);
 
@@ -64,19 +64,23 @@ public class UrlMappingService {
                 });
     }
 
-    public List<UrlSummary> listUrls() {
-        return repository.findAll().stream()
-                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+    public List<UrlSummary> listUrls(String ownerId) {
+        return repository.findAllByOwnerIdOrderByCreatedAtDesc(ownerId).stream()
                 .map(this::toSummary)
                 .collect(Collectors.toList());
     }
 
-    public void deleteUrl(@NonNull String id) {
-        repository.deleteById(id);
+    public boolean deleteUrl(String ownerId, @NonNull String id) {
+        return repository.findByIdAndOwnerId(id, ownerId)
+                .map(mapping -> {
+                    repository.delete(mapping);
+                    return true;
+                })
+                .orElse(false);
     }
 
-    public Optional<UrlStats> getStats(String shortCode) {
-        return repository.findByShortCode(shortCode).map(this::toStats);
+    public Optional<UrlStats> getStats(String ownerId, String shortCode) {
+        return repository.findByShortCodeAndOwnerId(shortCode, ownerId).map(this::toStats);
     }
 
     private String createShortCode(String customCode) {
