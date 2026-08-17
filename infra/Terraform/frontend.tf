@@ -163,15 +163,3 @@ resource "aws_s3_object" "script" {
   source_hash  = filemd5("${path.module}/../../frontend/script.js")
   content_type = "application/javascript"
 }
-
-resource "aws_s3_object" "config" {
-  bucket       = aws_s3_bucket.url_shortener_bucket.id
-  key          = "config.js"
-  content_type = "application/javascript"
-  content = "window.AUTH_CONFIG = ${jsonencode({
-    domain      = local.cognito_domain
-    clientId    = aws_cognito_user_pool_client.web.id
-    redirectUri = "https://www.url-shortener.p-e.kr/"
-    logoutUri   = "https://www.url-shortener.p-e.kr/"
-  })};"
-}

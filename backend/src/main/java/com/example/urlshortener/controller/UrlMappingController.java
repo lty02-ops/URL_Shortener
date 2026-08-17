@@ -6,8 +6,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +21,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @RestController
 @RequestMapping
@@ -35,10 +36,10 @@ public class UrlMappingController {
 
     @PostMapping(path = "/api/shorten", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ShortenResponse> shorten(
-            @AuthenticationPrincipal Jwt jwt,
+            @RequestHeader("X-Client-ID") String clientId,
             @RequestBody ShortenRequest request) {
         try {
-            return ResponseEntity.ok(service.shorten(jwt.getSubject(), request));
+            return ResponseEntity.ok(service.shorten(validateClientId(clientId), request));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(new ShortenResponse(ex.getMessage()));
         }
@@ -61,15 +62,15 @@ public class UrlMappingController {
     }
 
     @GetMapping(path = "/api/urls", produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<UrlSummary> listUrls(@AuthenticationPrincipal Jwt jwt) {
-        return service.listUrls(jwt.getSubject());
+    public List<UrlSummary> listUrls(@RequestHeader("X-Client-ID") String clientId) {
+        return service.listUrls(validateClientId(clientId));
     }
 
     @DeleteMapping("/api/urls/{id}")
     public ResponseEntity<GenericResponse> deleteUrl(
-            @AuthenticationPrincipal Jwt jwt,
+            @RequestHeader("X-Client-ID") String clientId,
             @NonNull @PathVariable("id") String id) {
-        if (!service.deleteUrl(jwt.getSubject(), id)) {
+        if (!service.deleteUrl(validateClientId(clientId), id)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
         return ResponseEntity.ok(new GenericResponse("URL deleted successfully"));
@@ -77,11 +78,23 @@ public class UrlMappingController {
 
     @GetMapping(path = "/api/stats/{shortCode}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<UrlStats> getStats(
-            @AuthenticationPrincipal Jwt jwt,
+            @RequestHeader("X-Client-ID") String clientId,
             @PathVariable("shortCode") String shortCode) {
-        return service.getStats(jwt.getSubject(), shortCode)
+        return service.getStats(validateClientId(clientId), shortCode)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    }
+
+    private String validateClientId(String clientId) {
+        try {
+            UUID parsed = UUID.fromString(clientId);
+            if (!parsed.toString().equals(clientId.toLowerCase())) {
+                throw new IllegalArgumentException("Non-canonical UUID");
+            }
+            return parsed.toString();
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid X-Client-ID");
+        }
     }
 
     @GetMapping(path = "/health", produces = MediaType.APPLICATION_JSON_VALUE)

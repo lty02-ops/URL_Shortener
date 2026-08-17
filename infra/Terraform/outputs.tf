@@ -53,18 +53,3 @@ output "cloudfront_certificate_arn" {
   value       = aws_acm_certificate.cloudfront.arn
   description = "CloudFront ACM certificate ARN"
 }
-
-output "cognito_user_pool_id" {
-  value       = aws_cognito_user_pool.users.id
-  description = "Cognito User Pool ID"
-}
-
-output "cognito_client_id" {
-  value       = aws_cognito_user_pool_client.web.id
-  description = "Cognito web app client ID"
-}
-
-output "cognito_login_url" {
-  value       = local.cognito_domain
-  description = "Cognito managed login domain"
-}
